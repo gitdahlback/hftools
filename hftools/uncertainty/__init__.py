@@ -1,0 +1,146 @@
+#-----------------------------------------------------------------------------
+# Copyright (c) 2014, HFTools Development Team.
+#
+# Distributed under the terms of the Modified BSD License.
+#
+# The full license is in the file COPYING.txt, distributed with this software.
+#-----------------------------------------------------------------------------
+# -*- coding: utf-8 -*-
+import numpy as np
+from hftools.dataset import hfarray
+
+
+class Sensitivities(object):
+    def __init__(self, **k):
+        self._sens = k
+
+    def add_sens(self, other):
+        out = Sensitivities(**self._sens)
+        for k, v in other._sens.items():
+            out._sens[k] = out._sens.get(k, 0) + v
+        return out
+
+    def multiply_sens(self, value):
+        out = Sensitivities()
+        for k, v in self._sens.items():
+            out._sens[k] = v * value
+        return out
+
+    def __neg__(self):
+        out = Sensitivities()
+        for k, v in self._sens.items():
+            out._sens[k] = -v
+        return out
+
+    def __repr__(self):
+        return self._sens.__repr__()
+
+
+class UncertainValue(object):
+    def __init__(self, name, value, uncertainties, sens=None):
+        self.name = name
+        self.value = value
+        self.uncertainties = uncertainties
+        if name is None:
+            self.sens = Sensitivities() if sens is None else sens
+        else:
+            self.sens = Sensitivities(**{name: hfarray(1.)})
+
+    def __neg__(self):
+        out = UncertainValue(None, -self.value,
+                             self.uncertainties, sens=-self.sens)
+        return out
+
+    def __add__(self, other):
+        if isinstance(other, UncertainValue):
+            value = self.value + other.value
+            sens = self.sens.add_sens(other.sens)
+            unc = other.uncertainties
+            unc.update(self.uncertainties)
+            out = UncertainValue(None, value, unc, sens=sens)
+        else:
+            out = UncertainValue(None, self.value + other,
+                                 self.uncertainties, self.sens)
+        return out
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __sub__(self, other):
+        return self + (-other)
+
+    def __rsub__(self, other):
+        return -self + other
+
+    def __mul__(self, other):
+        if isinstance(other, UncertainValue):
+            value = self.value * other.value
+            sens1 = self.sens.multiply_sens(other.value)
+            sens2 = other.sens.multiply_sens(self.value)
+            sens = sens1.add_sens(sens2)
+            unc = other.uncertainties
+            unc.update(self.uncertainties)
+            out = UncertainValue(None, value, unc, sens=sens)
+        else:
+            sens = self.sens.multiply_sens(other)
+            out = UncertainValue(None, self.value * other,
+                                 self.uncertainties, sens)
+        return out
+
+    def __rmul__(self, other):
+        sens = self.sens.multiply_sens(other)
+        out = UncertainValue(None, self.value * other,
+                             self.uncertainties, sens)
+        return out
+
+    def __div__(self, other):
+        if isinstance(other, UncertainValue):
+            value = self.value / other.value
+            sens1 = self.sens.multiply_sens(1 / other.value)
+            sens2 = other.sens.multiply_sens(-self.value / other.value ** 2)
+            sens = sens1.add_sens(sens2)
+            unc = other.uncertainties
+            unc.update(self.uncertainties)
+            out = UncertainValue(None, value, unc, sens=sens)
+        else:
+            sens = self.sens.multiply_sens(1 / other)
+            out = UncertainValue(None, self.value / other,
+                                 self.uncertainties, sens)
+        return out
+
+    def __rdiv__(self, other):
+        sens = self.sens.multiply_sens(-other / self.value ** 2)
+        out = UncertainValue(None, other / self.value,
+                             self.uncertainties, sens)
+
+        return out
+
+    def __pow__(self, other):
+        if isinstance(other, UncertainValue):
+            value = self.value ** other.value
+            c1 = self.value ** (-1 + other.value) * other.value
+            c2 = self.value ** other.value * np.log(self.value)
+            sens1 = self.sens.multiply_sens(c1)
+            sens2 = other.sens.multiply_sens(c2)
+            sens = sens1.add_sens(sens2)
+            unc = other.uncertainties
+            unc.update(self.uncertainties)
+            out = UncertainValue(None, value, unc, sens=sens)
+        else:
+            c1 = self.value ** (-1 + other) * other
+            sens = self.sens.multiply_sens(c1)
+            out = UncertainValue(None, other ** self.value,
+                                 self.uncertainties, sens)
+        return out
+
+    def __rpow__(self, other):
+        c1 = other ** self.value * np.log(other)
+        sens = self.sens.multiply_sens(c1)
+        out = UncertainValue(None, other ** self.value,
+                             self.uncertainties, sens)
+        return out
+
+
+def uv(name, value, uncertainty):
+    return UncertainValue(name, value, {name: uncertainty})
+
