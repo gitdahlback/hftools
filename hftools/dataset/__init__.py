@@ -7,9 +7,8 @@
 # The full license is in the file COPYING.txt, distributed with this software.
 #-----------------------------------------------------------------------------
 from hftools.dataset.dim import DimSweep, DimRep,\
-    DimMatrix_i, DimMatrix_j, _DimMatrix, DerivAxis, IndepAxis, DiagAxis, \
-    ComplexDerivAxis, ComplexIndepAxis, ComplexDiagAxis, dims_has_complex,\
-    DimPartial, DimBase, CPLX
+    DimMatrix_i, DimMatrix_j, DimUMatrix_i, DimUMatrix_j, _DimMatrix,\
+    dims_has_complex, DimPartial, DimBase
 
 from hftools.dataset.arrayobj import make_matrix, hfarray, ismatrix,\
     make_same_dims, make_same_dims_list, change_shape, remove_tail,\

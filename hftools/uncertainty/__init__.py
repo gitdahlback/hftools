@@ -7,7 +7,8 @@
 #-----------------------------------------------------------------------------
 # -*- coding: utf-8 -*-
 import numpy as np
-from hftools.dataset import hfarray
+from hftools.dataset import hfarray, DimMatrix_i, DimMatrix_j,\
+    DimUMatrix_i, DimUMatrix_j
 
 
 class Sensitivities(object):
@@ -141,6 +142,19 @@ class UncertainValue(object):
         return out
 
 
+def cast_to_uncertainty_matrix(x):
+    X = x
+
+    if DimUMatrix_i not in X.dims and DimMatrix_i in X.dims:
+        old = X.dims.get_matching_dim(DimMatrix_i)
+        X = X.replace_dim(old, DimUMatrix_i(old, "I"))
+    if DimUMatrix_j not in X.dims and DimMatrix_j in X.dims:
+        old = X.dims.get_matching_dim(DimMatrix_j)
+        X = X.replace_dim(old, DimUMatrix_j(old, "J"))
+    return X
+
+
 def uv(name, value, uncertainty):
-    return UncertainValue(name, value, {name: uncertainty})
+    U = cast_to_uncertainty_matrix(uncertainty)
+    return UncertainValue(name, value, {name: U})
 

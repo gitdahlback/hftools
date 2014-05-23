@@ -16,23 +16,9 @@ dim
 """
 import datetime
 import numpy as np
-import six
 
-from hftools.utils import is_numlike, is_integer, deprecate
+from hftools.utils import is_numlike, is_integer
 from hftools.py3compat import integer_types
-
-
-def dims_has_complex(dims):
-    for dim in reversed(dims):
-        dims = (ComplexDerivAxis, ComplexIndepAxis, ComplexDiagAxis)
-        if isinstance(dim, dims):
-            return True
-    return False
-
-
-def info_has_complex(info):
-    deprecate("info_has_complex is deprecated")
-    return dims_has_complex(info)
 
 
 def flatten(sequence):
@@ -48,7 +34,7 @@ class DimBase(object):
     sortprio = 0
 
     def __init__(self, Name, data=None, unit=None, name=None,
-                 outputformat=None):
+                 outputformat=None, unc=None):
         if isinstance(Name, DimBase):
             dim_data = Name.data
             dim_name = Name.name
@@ -81,6 +67,7 @@ class DimBase(object):
         self._name = dim_name
         self._unit = dim_unit
         self._outputformat = dim_outputformat
+        self._unc = unc
 
     @property
     def data(self):
@@ -119,10 +106,10 @@ class DimBase(object):
 
     def __lt__(self, other):
         a = (self.sortprio, self.name, self.__class__, self._data,
-             self._unit, self._outputformat)
+             self._unit, self._outputformat, self._unc)
         try:
             b = (other.sortprio, other.name, other.__class__, other._data,
-                 other._unit, self._outputformat)
+                 other._unit, self._outputformat, self._unc)
         except AttributeError:
             a = self.name
             b = other
@@ -130,10 +117,10 @@ class DimBase(object):
 
     def __eq__(self, other):
         a = (self.sortprio, self.name, self.__class__, self._data,
-             self._unit, self._outputformat)
+             self._unit, self._outputformat, self._unc)
         try:
             b = (other.sortprio, other.name, other.__class__, other._data,
-                 other._unit, self._outputformat)
+                 other._unit, self._outputformat, self._unc)
         except AttributeError:
             a = self.name
             b = other
@@ -166,127 +153,38 @@ class DimBase(object):
         return self
 
 
-class _DiagMeta(type):
-    def __init__(cls, *args):
-        if cls.__name__ != "_DiagAxis":
-            if not hasattr(cls._indep_axis, "_diag_axis"):
-                cls._indep_axis._diag_axis = cls
-                cls._indep_axis._deriv_axis = cls._deriv_axis
-            if not hasattr(cls._deriv_axis, "_diag_axis"):
-                cls._deriv_axis._diag_axis = cls
-                cls._deriv_axis._indep_axis = cls._indep_axis
-
-
-@six.add_metaclass(_DiagMeta)
-class _DiagAxis(DimBase):
-    sortprio = 0
-
-    @property
-    def indep_axis(self):
-        return self._indep_axis(self)
-
-    @property
-    def deriv_axis(self):
-        return self._deriv_axis(self)
-
-
-class _IndepAxis(DimBase):
-    @property
-    def diag_axis(self):
-        return self._diag_axis(self)
-
-    @property
-    def deriv_axis(self):
-        return self._deriv_axis(self)
-
-
-class _DerivAxis(DimBase):
-    @property
-    def diag_axis(self):
-        return self._diag_axis(self)
-
-    @property
-    def indep_axis(self):
-        return self._indep_axis(self)
-
-
-class IndepAxis(_IndepAxis):
+class DimAnonymous(DimBase):
     pass
 
 
-class DerivAxis(_DerivAxis):
+class DimSweep(DimBase):
     pass
 
 
-class DiagAxis(_DiagAxis):
-    _indep_axis = IndepAxis
-    _deriv_axis = DerivAxis
-
-
-class DimAnonymous(DiagAxis):
-    pass
-
-
-class DimSweep(DiagAxis):
-    pass
-
-
-class DimRep(DiagAxis):
+class DimRep(DimBase):
     sortprio = 1
 
 
-class ComplexIndepAxis(_IndepAxis):
-    sortprio = 2001
-    pass
-
-
-class ComplexDerivAxis(_DerivAxis):
-    sortprio = 2002
-    pass
-
-
-class ComplexDiagAxis(_DiagAxis):
-    sortprio = 2000
-    _indep_axis = ComplexIndepAxis
-    _deriv_axis = ComplexDerivAxis
-
-CPLX = (ComplexIndepAxis("cplx", 2), ComplexDerivAxis("cplx", 2))
-
-
-class _DimMatrix(DiagAxis):
-    sortprio = 1000
-
-
-class DimMatrix_Indep_i(_DimMatrix):
-    sortprio = 1000
-
-
-class DimMatrix_Deriv_i(_DimMatrix):
+class _DimMatrix(DimBase):
     sortprio = 1000
 
 
 class DimMatrix_i(_DimMatrix):
-    _indep_axis = DimMatrix_Indep_i
-    _deriv_axis = DimMatrix_Deriv_i
-    sortprio = 1000
-
-
-class DimMatrix_Indep_j(_DimMatrix):
-    sortprio = 1000
-
-
-class DimMatrix_Deriv_j(_DimMatrix):
-    sortprio = 1000
+    sortprio = 1010
 
 
 class DimMatrix_j(_DimMatrix):
-    _indep_axis = DimMatrix_Indep_j
-    _deriv_axis = DimMatrix_Deriv_j
+    sortprio = 1011
+
+
+class DimUMatrix_i(_DimMatrix):
+    sortprio = 1000
+
+
+class DimUMatrix_j(_DimMatrix):
     sortprio = 1001
 
 
 class DimPartial(DimSweep):
     pass
-
-
 
