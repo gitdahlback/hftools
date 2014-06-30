@@ -8,11 +8,11 @@
 #-----------------------------------------------------------------------------
 from hftools.dataset.dim import DimSweep, DimRep,\
     DimMatrix_i, DimMatrix_j, DimUMatrix_i, DimUMatrix_j, _DimMatrix,\
-    dims_has_complex, DimPartial, DimBase
+    DimPartial, DimBase
 
 from hftools.dataset.arrayobj import make_matrix, hfarray, ismatrix,\
     make_same_dims, make_same_dims_list, change_shape, remove_tail,\
-    remove_rep, isfullcomplex, make_fullcomplex_array, DimsList, make_vector,\
+    remove_rep, DimsList, make_vector,\
     ValueArray    #Deprecated
 
 

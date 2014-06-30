@@ -188,3 +188,25 @@ class DimUMatrix_j(_DimMatrix):
 class DimPartial(DimSweep):
     pass
 
+
+class DimDepends(DimBase):
+    """Dimension object to handle depends on dimensions of
+    automatic derivatives for uncertainty.
+    """
+    def __init__(self, Name, data=None, unit=None, name=None,
+                 outputformat=None, unc=None, index=None):
+        DimBase.__init__(self, Name, data=data, unit=unit, name=name,
+                         outputformat=outputformat, unc=unc)
+        if isinstance(Name, DimDepends) and index is not None:
+            self.index = index
+        else:
+            self.index = 1
+
+    def next_uncertainty_dim(self):
+        return DimDepends(self, index=self.index + 1)
+
+    def __repr__(self):
+        return "%s(%r, shape=%r, index=%r)" % (self.__class__.__name__,
+                                               self.name,
+                                               self.data.shape,
+                                               self.index)

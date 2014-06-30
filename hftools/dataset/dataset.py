@@ -27,7 +27,7 @@ from numpy import zeros, array, linspace
 from hftools.dataset.arrayobj import hfarray, ismatrix,\
     remove_rep, _hfarray
 from hftools.dataset.dim import DimBase, DimSweep, DimRep,\
-    DimMatrix_i, DimMatrix_j, DiagAxis
+    DimMatrix_i, DimMatrix_j
 from hftools.utils import warn, stable_uniq
 from hftools.dataset.helper import guess_unit_from_varname
 from hftools.py3compat import cast_unicode, cast_str, string_types
@@ -186,7 +186,7 @@ def is_matrix_name(x):
         return None, None
 
 
-def change_dim(ds, olddimclass=DimSweep, newdimclass=DiagAxis):
+def change_dim(ds, olddimclass=DimSweep, newdimclass=DimSweep):
     for x in ds.ivardata.values():
         if isinstance(x, olddimclass):
             ds.replace_dim(x, newdimclass(x))
@@ -495,6 +495,8 @@ class DataBlock(object):
         if isnumber:
             if np.issubdtype(self.ivardata[name].data.dtype, np.int):
                 fmt = "%d "  # space ensures split will give two fields
+            elif np.issubdtype(self.ivardata[name].data.dtype, np.datetime64):
+                fmt = "%s "  # space ensures split will give two fields
             else:
                 fmt = SIFormat(unit=self.ivardata[name].unit, digs=None)
             tofmt["shape"] = "<%s>" % self.ivardata[name].data.shape[0]

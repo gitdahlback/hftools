@@ -36,6 +36,26 @@ class Sensitivities(object):
     def __repr__(self):
         return self._sens.__repr__()
 
+    @property
+    def slice(self):
+        return Slicer(self)
+
+    def items(self):
+        return self._sens.items()
+
+
+class Slicer(object):
+    def __init__(self, sens):
+        self.sens = sens
+
+    def __getitem__(self, items):
+        out = {}
+        for k, v in self.sens.items():
+            out[k] = v[items]
+        return out
+
+
+
 
 class UncertainValue(object):
     def __init__(self, name, value, uncertainties, sens=None):
