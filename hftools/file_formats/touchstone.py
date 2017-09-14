@@ -21,13 +21,23 @@ import numpy as np
 from numpy import iscomplexobj, sqrt
 
 from hftools.math import dB_angle_to_complex, mag_angle_to_complex,\
-    re_im_to_complex
+    re_im_to_complex, dB
 from hftools.dataset import DataBlock, DimSweep, hfarray,\
     make_matrix, DimMatrix_i, DimMatrix_j
 from hftools.file_formats.common import Comments, db_iterator,\
     make_col_from_matrix
 from hftools.file_formats.readbase import Token
 from hftools.file_formats.readbase import ReadFileFormat
+
+
+
+def pad_columns(string_table):
+    # Find length of longest string for each column
+    maxwidths = [max(map(len, s)) for s in zip(*string_table)]
+    fmtlist = [f"%{n}s" for n in maxwidths]
+    for rad in string_table:
+        yield [fmt%elem for elem, fmt in zip(rad, fmtlist)]
+
 
 
 class TouchstoneError(Exception):
@@ -224,34 +234,46 @@ def format_touchstone_block(sweepvars, header, fmts,
         yield out
 
 
-def save_touchstone(db, filename):
+def save_touchstone(db, filename, sep="\t", format="RI"):
     """Write a Datablock to a touchstone-format file with name filename.
     """
+    fmt = format.upper()
+ 
+    if fmt not in ["RI", "MA", "DB"]:
+        raise TouchstoneError(f'Format {fmt} unknown, use "RI", "MA" or "DB"')
     with open(filename, "w") as fil:
         for comment in db.comments.fullcomments:
-            fil.write("!" + comment)
-            fil.write("\n")
+            print(f"!{comment}", file=fil)
         for k, v in db.vardata.items():
             if v.shape == ():
-                fil.write("!%s: %s\n" % (k, v.outputformat % v))
-#            fil.write("\t".join(rad))
-        fil.write("#HZ S RI R 50\n")
+                print(f"!{k}: {v.outputformat}", file=fil)
+        print(f"#HZ S {fmt} R 50", file=fil)
 
 
         header, columns = make_col_from_matrix([db.S.dims[0].name, "S"], [hfarray(db.S.dims[0]), db.S],
                                                "%s[%s,%s]", fortranorder=True)
         fmts = [x.outputformat for x in columns]
-
+        out = []
         for row in zip(*columns):
-            out = []
-            for elem, fmt in zip(row, fmts):
+            rowout = []
+            for elem, numfmt in zip(row, fmts):
                 if iscomplexobj(elem):
-                    out.append(fmt % elem.real)
-                    out.append(fmt % elem.imag)
+                    if fmt == "RI":
+                        rowout.append(numfmt % elem.real)
+                        rowout.append(numfmt % elem.imag)
+                    elif fmt == "MA":
+                        rowout.append(numfmt % abs(elem))
+                        rowout.append(numfmt % np.angle(elem, deg=True))
+                    elif fmt == "DB":
+                        rowout.append(numfmt % dB(elem))
+                        rowout.append(numfmt % np.angle(elem, deg=True))
+                    else:
+                        raise TouchstoneError("Format error unknown format {fmt}")
                 else:
-                    out.append(fmt % elem)
-            fil.write("\t".join(out))
-            fil.write("\n")
+                    rowout.append(numfmt % elem)
+            out.append(rowout)
+        for rad in pad_columns(out):
+            print(*rad, sep=sep, file=fil)
 
 
 def read_touchstone(filnamn, make_complex=True, property_to_vars=True,
